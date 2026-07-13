@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import qs
 import qs.modules.common
+import qs.modules.common.widgets
 import qs.services
 
 Rectangle {
@@ -43,13 +44,16 @@ Rectangle {
     readonly property int avatarSize:          32
     readonly property int filterStaggerMs:     9
 
+    // Category chips
+    readonly property bool showCategoryIcons:  true
+
     readonly property var categoryDefs: [
-        { label: "All",         categories: [] },
-        { label: "Internet",    categories: ["Network"] },
-        { label: "Development", categories: ["Development"] },
-        { label: "Office",      categories: ["Office", "Education"] },
-        { label: "System",      categories: ["Settings", "System", "Utility", "Science"] },
-        { label: "Media",       categories: ["AudioVideo", "Graphics"] },
+        { label: "All",         categories: [], icon: "apps" },
+        { label: "Internet",    categories: ["Network"], icon: "language" },
+        { label: "Development", categories: ["Development"], icon: "code" },
+        { label: "Office",      categories: ["Office", "Education"], icon: "work" },
+        { label: "System",      categories: ["Settings", "System", "Utility", "Science"], icon: "settings" },
+        { label: "Media",       categories: ["AudioVideo", "Graphics"], icon: "play_circle" },
     ]
 
     // ── Open/close ─────────────────────────────────────────────────────────────
@@ -409,61 +413,37 @@ Rectangle {
         // CATEGORY CHIPS
         Item { Layout.preferredHeight: 14 }
 
-        Row {
-            id: chipsRow
+        Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 8
+            width: chipsRow.implicitWidth + 8
+            height: chipsRow.implicitHeight + 8
+            radius: Appearance.rounding.full
+            color: Appearance.colors.colLayer1
 
-            Repeater {
-                model: root.categoryDefs
+            ButtonGroup {
+                id: chipsRow
+                anchors.centerIn: parent
+                spacing: 2
 
-                delegate: Rectangle {
-                    id: chip
-                    required property var modelData
-                    required property int index
+                Repeater {
+                    model: root.categoryDefs
 
-                    readonly property bool active: root.selectedCategory === index
+                    delegate: SelectionGroupButton {
+                        id: chip
+                        required property var modelData
+                        required property int index
 
-                    width: chipLabel.implicitWidth + 24
-                    height: 32
-                    radius: Appearance.rounding.full
-                    color: active
-                        ? Appearance.m3colors.m3primaryContainer
-                        : (chipMouse.containsMouse ? Appearance.colors.colLayer2Hover : Appearance.colors.colLayer2)
+                        leftmost: index === 0
+                        rightmost: index === root.categoryDefs.length - 1
+                        toggled: root.selectedCategory === index
+                        
+                        buttonText: chip.modelData.label
+                        buttonIcon: root.showCategoryIcons ? chip.modelData.icon : ""
+                        
+                        colBackground: Appearance.colors.colLayer3
+                        colBackgroundHover: Appearance.colors.colLayer3Hover
+                        colBackgroundActive: Appearance.colors.colLayer3Active
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.elementMoveSmall.duration
-                            easing.type: Appearance.animation.elementMoveSmall.type
-                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                        }
-                    }
-
-                    Text {
-                        id: chipLabel
-                        anchors.centerIn: parent
-                        text: chip.modelData.label
-                        color: active
-                            ? Appearance.m3colors.m3onPrimaryContainer
-                            : Appearance.colors.colOnLayer1
-                        font.pixelSize: Appearance.font.pixelSize.smaller
-                        font.family: Appearance.font.family.main
-                        font.weight: active ? Font.Medium : Font.Normal
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveSmall.duration
-                                easing.type: Appearance.animation.elementMoveSmall.type
-                                easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        id: chipMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
                         onClicked: root.selectCategory(chip.index)
                     }
                 }
