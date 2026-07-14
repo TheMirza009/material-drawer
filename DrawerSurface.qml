@@ -9,6 +9,8 @@ import qs
 import qs.modules.common
 import qs.modules.common.widgets
 import qs.services
+import "components/core"
+import "components/buttons"
 
 Rectangle {
     id: root
@@ -56,6 +58,12 @@ Rectangle {
         { label: "Media",       categories: ["AudioVideo", "Graphics"], icon: "play_circle" },
     ]
 
+    // ── Debug ──────────────────────────────────────────────────────────────────
+    // TEMPORARY diagnostic logging. Remove once the root cause is confirmed.
+    function dbg(msg) {
+        console.log("[DRAWER]", Date.now() % 100000, msg)
+    }
+
     // ── Open/close ─────────────────────────────────────────────────────────────
 
     signal closeRequested
@@ -63,19 +71,19 @@ Rectangle {
     focus: true
     Keys.onEscapePressed: root.closeRequested()
     Keys.onPressed: (event) => {
-        if (event.text.length > 0 && !searchField.activeFocus) {
-            searchField.forceActiveFocus()
+        if (event.text.length > 0 && !searchBar.searchFieldActiveFocus) {
+            searchBar.forceActiveFocus()
         }
     }
-    Keys.forwardTo: [searchField]
+    Keys.forwardTo: [searchBar.searchField]
 
     Component.onCompleted: {
-        displayedApps = filteredApps
+        appGrid.commitApps(filteredApps)
         resolveUserAvatar()
     }
     onVisibleChanged: {
         if (visible) {
-            displayedApps = filteredApps
+            appGrid.commitApps(filteredApps)
             root.forceActiveFocus()
         } else {
             if (resetSearchOnClose) clearSearch()
@@ -106,13 +114,24 @@ Rectangle {
 
         return apps.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
     }
+    onFilteredAppsChanged: dbg("filteredApps CHANGED -> len=" + filteredApps.length)
+
+    onAllAppsChanged: {
+        dbg("allApps CHANGED -> len=" + allApps.length)
+        if (visible && !filterAnimating && !filterPending) {
+            appGrid.commitApps(filteredApps)
+        }
+    }
 
     property int pageCount: Math.max(1, Math.ceil(displayedApps.length / appsPerPage))
+    onPageCountChanged: dbg("pageCount CHANGED -> " + pageCount)
 
     // ── Filter animation state ─────────────────────────────────────────────────
     property var  displayedApps:   []
     property bool filterAnimating: false
-    property bool filterTrigger:   false
+    property bool filterPending:   false
+
+    onDisplayedAppsChanged: dbg("displayedApps CHANGED -> len=" + displayedApps.length)
 
     // ── Search bar state ───────────────────────────────────────────────────────
     property bool searchHasText: false
@@ -122,16 +141,16 @@ Rectangle {
 
     // ── Handlers ───────────────────────────────────────────────────────────────
 
-    function getPage(pageIndex) {
-        return displayedApps.slice(pageIndex * appsPerPage, (pageIndex + 1) * appsPerPage)
-    }
+
 
     function selectCategory(index) {
+        dbg("selectCategory(" + index + ")")
         selectedCategory = index
         triggerFilterAnimation()
     }
 
     function onSearchChanged(text) {
+        dbg("onSearchChanged('" + text + "')")
         searchText = text
         searchHasText = text.length > 0
         triggerFilterAnimation()
@@ -142,21 +161,60 @@ Rectangle {
         root.closeRequested()
     }
 
+    function appsEqual(a, b) {
+        if (!a || !b) return false
+        if (a.length !== b.length) return false
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false
+        }
+        return true
+    }
+
     function triggerFilterAnimation() {
-        if (filterAnimating) return
+        if (appsEqual(filteredApps, appGrid.appsModel)) {
+            dbg("triggerFilterAnimation -> state identical, skipping animation")
+            return
+        }
+
+        dbg("triggerFilterAnimation: animating=" + filterAnimating + " pending(before)=" + filterPending)
+        if (filterAnimating) {
+            filterPending = true
+            return
+        }
         filterAnimating = true
         gridFadeOut.start()
     }
 
+    // Called when a fade cycle completes. If a filter request arrived
+    // mid-animation, it was queued via filterPending — honor it now
+    // against the current (up-to-date) filteredApps rather than losing it.
+    function onFilterAnimationFinished() {
+        dbg("onFilterAnimationFinished: pending=" + filterPending
+            + " displayedApps.len=" + displayedApps.length
+            + " pageCount=" + appGrid.pageCount
+            + " swipeView.count=" + appGrid.pageCount
+            + " currentIndex=" + appGrid.currentIndex
+            + " appGrid.swipeViewOpacity=" + appGrid.swipeViewOpacity)
+        filterAnimating = false
+
+        // Explicit geometry fix means we no longer need the visibility hack
+
+        if (filterPending) {
+            filterPending = false
+            triggerFilterAnimation()
+        }
+    }
+
     function commitFilteredApps() {
-        displayedApps = filteredApps
-        swipeView.currentIndex = 0
-        filterTrigger = !filterTrigger
+        dbg("commitFilteredApps START")
+        appGrid.commitApps(filteredApps)
+        dbg("commitFilteredApps END")
     }
 
     function clearSearch() {
-        searchField.clear()
-        searchField.focus = false
+        dbg("clearSearch()")
+        searchBar.clear()
+        searchBar.searchField.focus = false
         root.forceActiveFocus()
     }
 
@@ -183,8 +241,14 @@ Rectangle {
     SequentialAnimation {
         id: gridFadeOut
 
+        onStarted: root.dbg("gridFadeOut STARTED")
+        onStopped: {
+            root.dbg("gridFadeOut STOPPED (raw signal, deferring finish handler)")
+            Qt.callLater(root.onFilterAnimationFinished)
+        }
+
         NumberAnimation {
-            target: swipeView
+            target: appGrid
             property: "opacity"
             to: 0
             duration: 125 // Appearance.animation.elementMoveExit.duration
@@ -196,15 +260,11 @@ Rectangle {
         }
 
         NumberAnimation {
-            target: swipeView
+            target: appGrid
             property: "opacity"
             to: 1
             duration: 125 // Appearance.animation.elementMoveEnter.duration
             easing.type: Easing.InOutQuad
-        }
-
-        ScriptAction {
-            script: root.filterAnimating = false
         }
     }
 
@@ -218,7 +278,12 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
         onClicked: {
-            searchField.focus = false
+            root.dbg("ROOT SURFACE CLICKED: appGrid.swipeViewOpacity=" + appGrid.swipeViewOpacity
+                + " currentIndex=" + appGrid.currentIndex
+                + " displayedApps.len=" + displayedApps.length
+                + " pageCount=" + appGrid.pageCount
+                + " swipeView.count=" + appGrid.pageCount)
+            searchBar.searchField.focus = false
             root.forceActiveFocus()
         }
     }
@@ -242,600 +307,94 @@ Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
 
-            Rectangle {
+            SearchBar {
                 id: searchBar
                 anchors.centerIn: parent
-                width: (searchField.activeFocus || root.searchHasText)
-                           ? root.searchBarExpandedWidth
-                           : root.searchBarCollapsedWidth
-                height: 48
-                radius: Appearance.rounding.full
-
-                // Fill color — layer1 at rest, layer2Hover when focused
-                color: searchField.activeFocus
-                    ? Appearance.colors.colLayer2Hover
-                    : Appearance.colors.colLayer1
-
-                Behavior on width {
-                    NumberAnimation {
-                        duration: 200
-                        easing.type: Easing.InOutQuad
-                    }
-                }
-                Behavior on color {
-                    ColorAnimation {
-                        duration: 200
-                        easing.type: Easing.InOutQuad
-                    }
-                }
-
-                // Focus border — fades in as a primary-color ring when focused
-                Rectangle {
-                    anchors.fill: parent
-                    radius: parent.radius
-                    color: "transparent"
-                    border.width: 2
-                    border.color: searchField.activeFocus
-                        ? Appearance.m3colors.m3primary
-                        : "transparent"
-                    opacity: searchField.activeFocus ? 1.0 : 0.0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: 200
-                            easing.type: Easing.InOutQuad
-                        }
-                    }
-                }
-
-            Row {
-                id: searchBarRow
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                    left: parent.left
-                    right: parent.right
-                    leftMargin: 16
-                    rightMargin: 8
-                }
-                spacing: 10
-
-                // Search icon
-                Text {
-                    id: searchIconText
-                    text: "󰍉"
-                    font.pixelSize: root.searchIconPixelSize
-                    font.family: Appearance.font.family.iconNerd
-                    color: searchField.activeFocus
-                        ? Appearance.m3colors.m3primary
-                        : Appearance.colors.colOnLayer1
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.elementMoveSmall.duration
-                            easing.type: Appearance.animation.elementMoveSmall.type
-                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                        }
-                    }
-                }
-
-                // Text input — fills space between the two flanking icons
-                TextInput {
-                    id: searchField
-                    // Width: total row width minus both icon widths and both spacings
-                    // clearButton is always in the layout (visibility via opacity only),
-                    // so we always subtract its full width to prevent layout jitter.
-                    width: searchBarRow.width
-                           - searchIconText.implicitWidth
-                           - clearButtonContainer.width
-                           - searchBarRow.spacing * 2
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Appearance.colors.colOnLayer0
-                    font.pixelSize: Appearance.font.pixelSize.small
-                    font.family: Appearance.font.family.main
-                    selectionColor: Appearance.m3colors.m3primary
-                    selectedTextColor: Appearance.m3colors.m3onPrimary
-                    onTextChanged: {
-                        root.onSearchChanged(text)
-                        if (text.length > 0 && !searchField.activeFocus) {
-                            searchField.forceActiveFocus()
-                        }
-                        if (text.length === 0) {
-                            focus = false
-                            root.forceActiveFocus()
-                        }
-                    }
-
-                    Text {
-                        anchors.fill: parent
-                        text: "Type to search…"
-                        color: Appearance.colors.colOnLayer1
-                        font: searchField.font
-                        visible: searchField.text.length === 0 && !searchField.activeFocus
-                    }
-                }
-
-                // Clear button — styled as an icon button with padding (like Flutter's IconButton)
-                // Always occupies its width in the Row to prevent layout jitter on show/hide.
-                Item {
-                    id: clearButtonContainer
-                    width: 32    // fixed width: 24px icon + 4px padding each side
-                    height: 32
-                    anchors.verticalCenter: parent.verticalCenter
-                    opacity: root.searchHasText ? 1.0 : 0.0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.animation.elementMoveFast.duration
-                            easing.type: Appearance.animation.elementMoveFast.type
-                            easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                        }
-                    }
-
-                    // Hover background pill
-                    Rectangle {
-                        anchors.fill: parent
-                        radius: Appearance.rounding.full
-                        color: clearMouse.containsMouse
-                            ? Appearance.colors.colLayer1Hover
-                            : "transparent"
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveFast.duration
-                                easing.type: Appearance.animation.elementMoveFast.type
-                                easing.bezierCurve: Appearance.animation.elementMoveFast.bezierCurve
-                            }
-                        }
-                    }
-
-                    Text {
-                        anchors.centerIn: parent
-                        text: "󰅖"
-                        font.pixelSize: Appearance.font.pixelSize.normal
-                        font.family: Appearance.font.family.iconNerd
-                        color: Appearance.colors.colOnLayer1
-                    }
-
-                    MouseArea {
-                        id: clearMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        enabled: root.searchHasText
-                        onClicked: root.clearSearch()
-                    }
-                }
+                collapsedWidth: root.searchBarCollapsedWidth
+                expandedWidth: root.searchBarExpandedWidth
+                iconPixelSize: root.searchIconPixelSize
+                hasText: root.searchHasText
+                
+                onSearchTextChanged: text => root.onSearchChanged(text)
+                onClearRequested: root.clearSearch()
+                onEmptyFocusLost: root.forceActiveFocus()
             }
-            } // searchBar
-        } // search container
+        }
 
         // CATEGORY CHIPS
         Item { Layout.preferredHeight: 14 }
 
-        Rectangle {
+        CategoryChips {
             Layout.alignment: Qt.AlignHCenter
-            width: chipsRow.implicitWidth + 8
-            height: chipsRow.implicitHeight + 8
-            radius: Appearance.rounding.full
-            color: Appearance.colors.colLayer1
-
-            ButtonGroup {
-                id: chipsRow
-                anchors.centerIn: parent
-                spacing: 2
-
-                Repeater {
-                    model: root.categoryDefs
-
-                    delegate: SelectionGroupButton {
-                        id: chip
-                        required property var modelData
-                        required property int index
-
-                        leftmost: index === 0
-                        rightmost: index === root.categoryDefs.length - 1
-                        toggled: root.selectedCategory === index
-                        
-                        buttonText: chip.modelData.label
-                        buttonIcon: root.showCategoryIcons ? chip.modelData.icon : ""
-                        
-                        colBackground: Appearance.colors.colLayer3
-                        colBackgroundHover: Appearance.colors.colLayer3Hover
-                        colBackgroundActive: Appearance.colors.colLayer3Active
-
-                        onClicked: root.selectCategory(chip.index)
-                    }
-                }
-            }
+            categoryDefs: root.categoryDefs
+            selectedCategory: root.selectedCategory
+            showIcons: root.showCategoryIcons
+            onCategorySelected: index => root.selectCategory(index)
         }
 
         // APP GRID
         Item { Layout.preferredHeight: 18 }
 
-        SwipeView {
-            id: swipeView
+        AppGrid {
+            id: appGrid
             Layout.preferredWidth: root.gridContentWidth
             Layout.preferredHeight: root.gridContentHeight
-            clip: true
-            currentIndex: 0
-
-            Repeater {
-                model: root.pageCount
-
-                delegate: Item {
-                    id: pageItem
-                    required property int index
-
-                    readonly property bool shouldLoad: SwipeView.isCurrentItem
-                                                    || SwipeView.isPreviousItem
-                                                    || SwipeView.isNextItem
-
-                    Loader {
-                        anchors.fill: parent
-                        active: pageItem.shouldLoad
-
-                        sourceComponent: Component {
-                            Grid {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.top: parent.top
-                                columns: root.columns
-                                rowSpacing: root.dynamicRowSpacing
-                                columnSpacing: root.dynamicColSpacing
-
-                                Repeater {
-                                    model: root.getPage(pageItem.index)
-
-                                    delegate: Item {
-                                        id: appCell
-                                        required property var modelData
-                                        required property int index
-
-                                        readonly property string iconSource:
-                                            "image://icon/" + (modelData.iconName
-                                                            ?? modelData.icon
-                                                            ?? modelData.iconPath
-                                                            ?? "")
-
-                                        width: root.appCellWidth
-                                        height: root.appCellHeight
-
-                                        // ── Filter float-in animation ──────────────
-                                        property real animY: 0
-
-                                        Connections {
-                                            target: root
-                                            function onFilterTriggerChanged() {
-                                                if (!root.filterAnimating) return
-                                                floatInY.stop()
-                                                floatInOpacity.stop()
-                                                appCell.opacity = 0
-                                                appCell.animY = 15
-                                                floatInDelay.interval = appCell.index * root.filterStaggerMs
-                                                floatInDelay.restart()
-                                            }
-                                        }
-
-                                        Timer {
-                                            id: floatInDelay
-                                            repeat: false
-                                            onTriggered: {
-                                                floatInY.start()
-                                                floatInOpacity.start()
-                                            }
-                                        }
-
-                                        NumberAnimation {
-                                            id: floatInY
-                                            target: appCell
-                                            property: "animY"
-                                            from: 15
-                                            to: 0
-                                            duration: 125 // Appearance.animation.elementMoveEnter.duration
-                                            easing.type: Easing.InOutQuad
-                                        }
-
-                                        NumberAnimation {
-                                            id: floatInOpacity
-                                            target: appCell
-                                            property: "opacity"
-                                            from: 0
-                                            to: 1
-                                            duration: 125 // Appearance.animation.elementMoveEnter.duration
-                                            easing.type: Easing.InOutQuad
-                                        }
-
-                                        transform: Translate { y: appCell.animY }
-
-                                        Column {
-                                            anchors.centerIn: parent
-                                            spacing: 8
-
-                                            // ICON CHIP
-                                            Rectangle {
-                                                width: root.iconChipSize
-                                                height: root.iconChipSize
-
-                                                radius: root.iconShape === "Circular" ? root.iconChipSize / 2
-                                                      : root.iconShape === "Rounded"  ? Appearance.rounding.normal
-                                                      : 0
-
-                                                color: root.iconShape === "None"
-                                                    ? "transparent"
-                                                    : (appMouse.containsMouse
-                                                        ? Appearance.colors.colLayer2Hover
-                                                        : Appearance.colors.colLayer2)
-
-                                                anchors.horizontalCenter: parent.horizontalCenter
-
-                                                Behavior on color {
-                                                    ColorAnimation {
-                                                        duration: Appearance.animation.elementMoveSmall.duration
-                                                        easing.type: Appearance.animation.elementMoveSmall.type
-                                                        easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                                                    }
-                                                }
-
-                                                transform: Scale {
-                                                    xScale: appMouse.pressed ? 0.93 : 1.0
-                                                    yScale: appMouse.pressed ? 0.93 : 1.0
-                                                    origin.x: root.iconChipSize / 2
-                                                    origin.y: root.iconChipSize / 2
-                                                    Behavior on xScale {
-                                                        NumberAnimation {
-                                                            duration: Appearance.animation.elementMoveSmall.duration
-                                                            easing.type: Appearance.animation.elementMoveSmall.type
-                                                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                                                        }
-                                                    }
-                                                    Behavior on yScale {
-                                                        NumberAnimation {
-                                                            duration: Appearance.animation.elementMoveSmall.duration
-                                                            easing.type: Appearance.animation.elementMoveSmall.type
-                                                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                                                        }
-                                                    }
-                                                }
-
-                                                Image {
-                                                    id: appIcon
-                                                    anchors.centerIn: parent
-                                                    source: appCell.iconSource
-                                                    sourceSize: Qt.size(root.iconSize, root.iconSize)
-                                                    width: root.iconSize
-                                                    height: root.iconSize
-                                                    smooth: true
-                                                    asynchronous: true
-                                                    cache: true
-
-                                                    Text {
-                                                        anchors.centerIn: parent
-                                                        visible: appIcon.status === Image.Error
-                                                              || appIcon.status === Image.Null
-                                                        text: (appCell.modelData.name ?? "?").charAt(0).toUpperCase()
-                                                        color: Appearance.colors.colOnLayer2
-                                                        font.pixelSize: Appearance.font.pixelSize.huge
-                                                        font.family: Appearance.font.family.main
-                                                        font.weight: Font.Medium
-                                                    }
-                                                }
-                                            }
-
-                                            // APP LABEL
-                                            Text {
-                                                width: root.appCellWidth - 8
-                                                anchors.horizontalCenter: parent.horizontalCenter
-                                                text: appCell.modelData.name ?? ""
-                                                color: Appearance.colors.colOnLayer0
-                                                font.pixelSize: Appearance.font.pixelSize.smaller
-                                                font.family: Appearance.font.family.main
-                                                elide: Text.ElideRight
-                                                horizontalAlignment: Text.AlignHCenter
-                                                maximumLineCount: 1
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            id: appMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.launchApp(appCell.modelData)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            
+            columns: root.columns
+            rows: root.rows
+            appCellWidth: root.appCellWidth
+            appCellHeight: root.appCellHeight
+            dynamicColSpacing: root.dynamicColSpacing
+            dynamicRowSpacing: root.dynamicRowSpacing
+            iconChipSize: root.iconChipSize
+            iconShape: root.iconShape
+            iconSize: root.iconSize
+            filterStaggerMs: root.filterStaggerMs
+            
+            filterAnimating: root.filterAnimating
+            
+            onAppClicked: entry => root.launchApp(entry)
         }
-
-        // FOOTER SPACER
-        Item { Layout.preferredHeight: 32 }
 
         // FOOTER
         Item {
             Layout.fillWidth: true
             Layout.preferredHeight: root.paginationRowHeight
 
-            // CENTER — Pagination dots
-            Row {
-                id: paginationRow
-                anchors.centerIn: parent
-                spacing: 7
-
-                Repeater {
-                    model: swipeView.count
-
-                    delegate: Rectangle {
-                        required property int index
-
-                        readonly property bool active: swipeView.currentIndex === index
-
-                        width:  active ? 20 : 8
-                        height: 8
-                        radius: Appearance.rounding.full
-                        color:  active
-                            ? Appearance.colors.colOnLayer0
-                            : Appearance.colors.colOnLayer1Inactive
-
-                        Behavior on width {
-                            NumberAnimation {
-                                duration: Appearance.animation.elementMoveSmall.duration
-                                easing.type: Appearance.animation.elementMoveSmall.type
-                                easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                            }
-                        }
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.elementMoveSmall.duration
-                                easing.type: Appearance.animation.elementMoveSmall.type
-                                easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: swipeView.currentIndex = index
-                        }
-                    }
-                }
+            PaginationDots {
+                anchors.fill: parent
+                pageCount: appGrid.pageCount
+                currentIndex: appGrid.currentIndex
+                onDotClicked: index => appGrid.currentIndex = index
             }
         }
     }
 
     // ── Corner Buttons ─────────────────────────────────────────────────────────
 
-    // LEFT — User profile picture (clipped circle, opens user settings on click)
-    Item {
-        id: avatarContainer
-        parent: root
+    UserAvatar {
         anchors {
             left: parent.left
             bottom: parent.bottom
             leftMargin: 36
             bottomMargin: 32
         }
-        width: root.avatarSize
-        height: root.avatarSize
-
-        Item {
-            id: avatarClip
-            anchors.fill: parent
-
-            Image {
-                id: avatarImage
-                anchors.fill: parent
-                source: root.userAvatarPath.length > 0 ? ("file://" + root.userAvatarPath) : ""
-                fillMode: Image.PreserveAspectCrop
-                visible: false
-                smooth: true
-                asynchronous: true
-                cache: true
-            }
-
-            Rectangle {
-                id: avatarMask
-                anchors.fill: parent
-                radius: root.avatarSize / 2
-                visible: false
-            }
-
-            OpacityMask {
-                anchors.fill: parent
-                source: avatarImage
-                maskSource: avatarMask
-                visible: root.userAvatarPath.length > 0
-                         && avatarImage.status !== Image.Error
-                         && avatarImage.status !== Image.Null
-            }
-
-            // Fallback: Material person icon when no avatar available
-            Text {
-                anchors.centerIn: parent
-                visible: !parent.children[2].visible
-                text: "person"
-                font.family: Appearance.font.family.iconMaterial
-                font.pixelSize: Appearance.font.pixelSize.large
-                color: Appearance.colors.colOnLayer2
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                radius: root.avatarSize / 2
-                color: "transparent"
-                border.color: Appearance.colors.colOnLayer1Inactive
-                border.width: 1
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
-            onClicked: {
-                Quickshell.execDetached(["systemsettings", "kcm_users"])
-                root.closeRequested()
-            }
+        size: root.avatarSize
+        avatarPath: root.userAvatarPath
+        onClicked: {
+            Quickshell.execDetached(["systemsettings", "kcm_users"])
+            root.closeRequested()
         }
     }
 
-    // RIGHT — Power / session button
-    Item {
-        id: powerContainer
-        parent: root
+    PowerButton {
         anchors {
             right: parent.right
             bottom: parent.bottom
             rightMargin: 36
             bottomMargin: 32
         }
-        width: root.avatarSize
-        height: root.avatarSize
-
-        // Hover background pill
-        Rectangle {
-            anchors.fill: parent
-            radius: Appearance.rounding.full
-            color: powerMouse.containsMouse
-                ? Appearance.colors.colLayer1Hover
-                : "transparent"
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.elementMoveSmall.duration
-                    easing.type: Appearance.animation.elementMoveSmall.type
-                    easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                }
-            }
-        }
-
-        Text {
-            id: powerIcon
-            anchors.centerIn: parent
-            text: "power_settings_new"
-            font.family: Appearance.font.family.iconMaterial
-            font.pixelSize: Appearance.font.pixelSize.large
-            color: powerMouse.containsMouse
-                ? Appearance.colors.colOnLayer0
-                : Appearance.colors.colOnLayer1
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.elementMoveSmall.duration
-                    easing.type: Appearance.animation.elementMoveSmall.type
-                    easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
-                }
-            }
-        }
-
-        MouseArea {
-            id: powerMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: GlobalStates.sessionOpen = true
-        }
+        size: root.avatarSize
+        onClicked: GlobalStates.sessionOpen = true
     }
 }
