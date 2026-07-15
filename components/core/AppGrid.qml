@@ -24,6 +24,9 @@ Item {
     
     // We mock this property to avoid DrawerSurface breaking since it expects it from SwipeView
     property real swipeViewOpacity: 1.0
+    property int  keyboardIndex:    -1
+    readonly property var keyboardApp: keyboardIndex >= 0 && keyboardIndex < appsModel.length
+                                       ? appsModel[keyboardIndex] : null
 
     signal appClicked(var entry)
 
@@ -103,6 +106,7 @@ Item {
                         height: appGridContainer.appCellHeight
 
                         property real animY: 0
+                        readonly property bool isKeyboardHighlighted: appGridContainer.keyboardApp === appCell.modelData
 
                         Connections {
                             target: appGridContainer
@@ -162,7 +166,7 @@ Item {
 
                                 color: appGridContainer.iconShape === "None"
                                     ? "transparent"
-                                    : (appMouse.containsMouse
+                                    : (appMouse.containsMouse || appCell.isKeyboardHighlighted
                                         ? Appearance.colors.colLayer2Hover
                                         : Appearance.colors.colLayer2)
 
@@ -218,6 +222,23 @@ Item {
                                         font.weight: Font.Medium
                                     }
                                 }
+
+                                // M3 keyboard focus ring — primary colour, 2dp, mouse hover hides it
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: parent.radius
+                                    color: "transparent"
+                                    border.width: 2
+                                    border.color: Appearance.m3colors.m3primary
+                                    opacity: (appCell.isKeyboardHighlighted && !appMouse.containsMouse) ? 1.0 : 0.0
+                                    Behavior on opacity {
+                                        NumberAnimation {
+                                            duration: Appearance.animation.elementMoveSmall.duration
+                                            easing.type: Appearance.animation.elementMoveSmall.type
+                                            easing.bezierCurve: Appearance.animation.elementMoveSmall.bezierCurve
+                                        }
+                                    }
+                                }
                             }
 
                             Text {
@@ -239,6 +260,7 @@ Item {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: appGridContainer.appClicked(appCell.modelData)
+                            onEntered: appGridContainer.keyboardIndex = -1
                         }
                     }
                 }

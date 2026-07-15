@@ -16,6 +16,7 @@ Rectangle {
     signal searchTextChanged(string text)
     signal clearRequested()
     signal emptyFocusLost()
+    signal navigationKeyPressed(int key)
 
     width: (searchField.activeFocus || hasText) ? expandedWidth : collapsedWidth
     height: 48
@@ -74,12 +75,19 @@ Rectangle {
             selectedTextColor: Appearance.m3colors.m3onPrimary
             onTextChanged: {
                 searchBar.searchTextChanged(text)
-                if (text.length > 0 && !searchField.activeFocus) {
-                    searchField.forceActiveFocus()
-                }
                 if (text.length === 0) {
                     focus = false
                     searchBar.emptyFocusLost()
+                }
+            }
+
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Left   || event.key === Qt.Key_Right   ||
+                    event.key === Qt.Key_Up     || event.key === Qt.Key_Down    ||
+                    event.key === Qt.Key_PageUp || event.key === Qt.Key_PageDown ||
+                    event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                    searchBar.navigationKeyPressed(event.key)
+                    event.accepted = true
                 }
             }
 

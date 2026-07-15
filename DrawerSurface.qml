@@ -71,6 +71,17 @@ Rectangle {
     focus: true
     Keys.onEscapePressed: root.closeRequested()
     Keys.onPressed: (event) => {
+        if (searchHasText) {
+            if (event.key === Qt.Key_Right)   { _navigateGrid(1, true);         event.accepted = true; return }
+            if (event.key === Qt.Key_Left)    { _navigateGrid(-1, true);        event.accepted = true; return }
+            if (event.key === Qt.Key_Down)    { _navigateGrid(columns, false);  event.accepted = true; return }
+            if (event.key === Qt.Key_Up)      { _navigateGrid(-columns, false); event.accepted = true; return }
+            if (event.key === Qt.Key_PageDown) { _jumpPage(1);                  event.accepted = true; return }
+            if (event.key === Qt.Key_PageUp)   { _jumpPage(-1);                 event.accepted = true; return }
+            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                if (appGrid.keyboardIndex >= 0) { launchApp(filteredApps[appGrid.keyboardIndex]); event.accepted = true; return }
+            }
+        }
         if (event.text.length > 0 && !searchBar.searchFieldActiveFocus) {
             searchBar.forceActiveFocus()
         }
@@ -207,6 +218,7 @@ Rectangle {
 
     function commitFilteredApps() {
         dbg("commitFilteredApps START")
+        appGrid.keyboardIndex = searchHasText ? 0 : -1
         appGrid.commitApps(filteredApps)
         dbg("commitFilteredApps END")
     }
@@ -216,6 +228,28 @@ Rectangle {
         searchBar.clear()
         searchBar.searchField.focus = false
         root.forceActiveFocus()
+    }
+
+    function _navigateGrid(delta, wrap) {
+        const count = filteredApps.length
+        if (count === 0) return
+        if (appGrid.keyboardIndex < 0) {
+            appGrid.keyboardIndex = 0
+            appGrid.currentIndex  = 0
+            return
+        }
+        const next = wrap
+            ? (appGrid.keyboardIndex + delta + count) % count
+            : Math.max(0, Math.min(appGrid.keyboardIndex + delta, count - 1))
+        appGrid.keyboardIndex = next
+        appGrid.currentIndex  = Math.floor(next / appsPerPage)
+    }
+
+    function _jumpPage(direction) {
+        const newPage = Math.max(0, Math.min(appGrid.currentIndex + direction, appGrid.pageCount - 1))
+        if (newPage === appGrid.currentIndex) return
+        appGrid.currentIndex  = newPage
+        appGrid.keyboardIndex = newPage * appsPerPage
     }
 
     function resolveUserAvatar() {
@@ -314,10 +348,22 @@ Rectangle {
                 expandedWidth: root.searchBarExpandedWidth
                 iconPixelSize: root.searchIconPixelSize
                 hasText: root.searchHasText
-                
+
                 onSearchTextChanged: text => root.onSearchChanged(text)
                 onClearRequested: root.clearSearch()
                 onEmptyFocusLost: root.forceActiveFocus()
+                onNavigationKeyPressed: (key) => {
+                    if (!searchHasText) return
+                    if      (key === Qt.Key_Right)    _navigateGrid(1, true)
+                    else if (key === Qt.Key_Left)     _navigateGrid(-1, true)
+                    else if (key === Qt.Key_Down)     _navigateGrid(columns, false)
+                    else if (key === Qt.Key_Up)       _navigateGrid(-columns, false)
+                    else if (key === Qt.Key_PageDown) _jumpPage(1)
+                    else if (key === Qt.Key_PageUp)   _jumpPage(-1)
+                    else if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+                        if (appGrid.keyboardIndex >= 0) launchApp(filteredApps[appGrid.keyboardIndex])
+                    }
+                }
             }
         }
 
