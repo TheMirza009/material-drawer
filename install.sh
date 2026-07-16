@@ -33,6 +33,24 @@ done
 
 CONFIG_DIR="$HOME/.config/quickshell/ii"
 HYPR_DIR="$HOME/.config/hypr"
+TARGET_DIR="$CONFIG_DIR/modules/materialDrawer"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+
+# 0. Copy files if not already in the target directory
+if [ "$SCRIPT_DIR" != "$TARGET_DIR" ]; then
+    echo -e "${C_CYAN}[*] Checking if MaterialDrawer files need to be copied...${C_RESET}"
+    mkdir -p "$TARGET_DIR"
+    
+    # Recursively check if the target directory already matches the source perfectly (excluding .git metadata)
+    if diff -rq -x '.git' "$SCRIPT_DIR" "$TARGET_DIR" > /dev/null 2>&1; then
+        echo -e "    ${C_DIM}- Files are already identical and up to date. Skipping copy.${C_RESET}"
+    else
+        cp -r "$SCRIPT_DIR/"* "$TARGET_DIR/"
+        echo -e "    ${C_GREEN}+ Files copied/updated successfully in $TARGET_DIR${C_RESET}"
+    fi
+else
+    echo -e "${C_CYAN}[*] Script is running from the target directory. Skipping copy.${C_RESET}"
+fi
 
 SHELL_QML="$CONFIG_DIR/shell.qml"
 GLOBAL_STATES="$CONFIG_DIR/GlobalStates.qml"

@@ -1,6 +1,6 @@
 # Material App Drawer — Quickshell Module
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Last Updated:** July 17, 2026
 
 A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (the `ii` Quickshell config). Slides up from the bottom of the screen, shows all installed desktop applications, supports category filtering, search, and swipe pagination.
@@ -47,19 +47,14 @@ modules/
 
 ### Automated Installation (Recommended)
 
-An idempotent, automated bash script (v1.0.0) is included to safely inject all necessary QML components, global states, and Hyprland rules directly into your configuration files.
+An idempotent, automated bash script (v1.0.0) is included to safely inject all necessary QML components, global states, and Hyprland rules directly into your configuration files. The script will also automatically copy the module files to the correct Quickshell directory if they aren't already there.
 
-1. Ensure you have copied the `materialDrawer` module to your Quickshell directory:
+1. Navigate to the downloaded repository and run the installation script:
 ```bash
-cp -r materialDrawer/ ~/.config/quickshell/ii/modules/materialDrawer/
-```
-2. Run the installation script:
-```bash
-cd ~/.config/quickshell/ii/modules/materialDrawer/
 chmod +x install.sh
 ./install.sh
 ```
-3. Restart Quickshell and reload your Hyprland configuration to apply the changes.
+2. Restart Quickshell and reload your Hyprland configuration to apply the changes.
 
 ---
 
