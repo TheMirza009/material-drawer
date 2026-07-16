@@ -1,5 +1,8 @@
 # Material App Drawer — Quickshell Module
 
+**Version:** 1.0.0  
+**Last Updated:** July 17, 2026
+
 A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (the `ii` Quickshell config). Slides up from the bottom of the screen, shows all installed desktop applications, supports category filtering, search, and swipe pagination.
 
 > [!IMPORTANT]
@@ -15,6 +18,8 @@ A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4
 - Live search
 - Swipe-paginated app grid (5 × 4 per page)
 - Animated pagination dots
+- User avatar with quick-access to account settings
+- Floating Power Menu (Lock, Shut Down, Reboot) with staggered cinematic transitions
 - Click-outside-to-dismiss full-screen overlay
 - Escape key to close
 - Dock stays visible on top of the drawer during open/close animation
@@ -29,14 +34,40 @@ A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4
 modules/
 └── materialDrawer/
     ├── MaterialDrawerWindow.qml   ← Scope + PanelWindow wrapper
-    └── DrawerSurface.qml          ← App drawer card UI
+    ├── DrawerSurface.qml          ← Main drawer card UI
+    ├── components/
+    │   ├── core/                  ← Grid, Search, Chips, Pagination
+    │   └── buttons/               ← Power Menu, User Avatar, Ripples
+    └── docs/                      ← Architectural specs & workflows
 ```
 
 ---
 
 ## Installation
 
-### Step 1 — Copy the module
+### Automated Installation (Recommended)
+
+An idempotent, automated bash script (v1.0.0) is included to safely inject all necessary QML components, global states, and Hyprland rules directly into your configuration files.
+
+1. Ensure you have copied the `materialDrawer` module to your Quickshell directory:
+```bash
+cp -r materialDrawer/ ~/.config/quickshell/ii/modules/materialDrawer/
+```
+2. Run the installation script:
+```bash
+cd ~/.config/quickshell/ii/modules/materialDrawer/
+chmod +x install.sh
+./install.sh
+```
+3. Restart Quickshell and reload your Hyprland configuration to apply the changes.
+
+---
+
+### Manual Integration (Fallback)
+
+If you prefer to integrate the module manually or if the script encounters an error, follow the steps below.
+
+#### Step 1 — Copy the module
 
 Copy the `materialDrawer/` directory into your Quickshell `ii` modules folder:
 
@@ -229,15 +260,15 @@ All tuneable values live at the top of `DrawerSurface.qml` under the **Control P
 | `columns` | `5` | App grid columns per page |
 | `rows` | `4` | App grid rows per page |
 | `iconChipSize` | `64` | Size of the icon background chip (px) |
-| `iconSize` | `36` | Size of the app icon within the chip (px) |
-| `appCellWidth` | `110` | Width of each app cell (px) |
-| `appCellHeight` | `100` | Height of each app cell (px) |
+| `iconSize` | `60` | Size of the app icon within the chip (px) |
+| `appCellWidth` | `100` | Width of each app cell (px) |
+| `appCellHeight` | `110` | Height of each app cell (px) |
 | `categoryDefs` | see file | Category chip labels and XDG category mappings |
 
-The card itself is **700 × 760 px**, positioned 82 px from the screen bottom (leaving space for the dock). This can be adjusted in `MaterialDrawerWindow.qml`:
+The card itself automatically sizes based on the grid layout dimensions, positioned 75 px from the screen bottom (leaving space for the dock). This can be adjusted in `MaterialDrawerWindow.qml`:
 
 ```qml
-anchors.bottomMargin: 82   // ← increase if your dock is taller
+anchors.bottomMargin: 75   // ← increase if your dock is taller
 ```
 
 ---

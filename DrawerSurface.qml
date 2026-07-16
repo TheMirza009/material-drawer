@@ -172,6 +172,7 @@ Rectangle {
         dbg("onSearchChanged('" + text + "')")
         searchText = text
         searchHasText = text.length > 0
+        root.powerMenuOpen = false
         triggerFilterAnimation()
     }
 

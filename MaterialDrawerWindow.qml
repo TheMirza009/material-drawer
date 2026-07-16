@@ -48,7 +48,10 @@ Scope {
         Item  { id: fullArea; anchors.fill: parent }
         Region { id: fullRegion; item: fullArea }
 
-        function hide() { root.drawerOpen = false }
+        function hide() { 
+            drawerSurface.powerMenuOpen = false
+            root.drawerOpen = false 
+        }
 
         onVisibleChanged: {
             if (visible) {
@@ -66,7 +69,10 @@ Scope {
         // ── Dismiss overlay (behind the card) ───────────────────────────────────────
         MouseArea {
             anchors.fill: parent
-            onClicked: drawerWindow.hide()
+            onClicked: {
+                drawerSurface.powerMenuOpen = false
+                drawerWindow.hide()
+            }
         }
 
         // ── Drawer surface ─────────────────────────────────────────────────────────
