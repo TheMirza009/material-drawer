@@ -402,6 +402,9 @@ Rectangle {
             onAppClicked: entry => root.launchApp(entry)
         }
 
+        // SPACER
+        Item { Layout.preferredHeight: 30 }
+
         // FOOTER
         Item {
             Layout.fillWidth: true
@@ -409,6 +412,7 @@ Rectangle {
 
             PaginationDots {
                 anchors.fill: parent
+                anchors.topMargin: 25
                 pageCount: appGrid.pageCount
                 currentIndex: appGrid.currentIndex
                 onDotClicked: index => appGrid.currentIndex = index
@@ -433,14 +437,22 @@ Rectangle {
         }
     }
 
-    PowerButton {
+    Rectangle {
         anchors {
             right: parent.right
             bottom: parent.bottom
             rightMargin: 36
             bottomMargin: 32
         }
-        size: root.avatarSize
-        onClicked: GlobalStates.sessionOpen = true
+        width: 40
+        height: 40
+        radius: width / 2
+        color: Appearance.colors.colLayer1
+
+        PowerButton {
+            anchors.centerIn: parent
+            size: root.avatarSize
+            onClicked: GlobalStates.sessionOpen = true
+        }
     }
 }
