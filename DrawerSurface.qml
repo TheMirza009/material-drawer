@@ -69,7 +69,13 @@ Rectangle {
     signal closeRequested
 
     focus: true
-    Keys.onEscapePressed: root.closeRequested()
+    Keys.onEscapePressed: {
+        if (root.powerMenuOpen) {
+            root.powerMenuOpen = false
+        } else {
+            root.closeRequested()
+        }
+    }
     Keys.onPressed: (event) => {
         if (searchHasText) {
             if (event.key === Qt.Key_Right)   { _navigateGrid(1, true);         event.accepted = true; return }
@@ -97,6 +103,7 @@ Rectangle {
             appGrid.commitApps(filteredApps)
             root.forceActiveFocus()
         } else {
+            root.powerMenuOpen = false
             if (resetSearchOnClose) clearSearch()
         }
     }
@@ -105,6 +112,7 @@ Rectangle {
 
     property int selectedCategory: 0
     property string searchText: ""
+    property bool powerMenuOpen: false
     property var allApps: DesktopEntries.applications.values ?? []
 
     property var filteredApps: {
@@ -168,6 +176,7 @@ Rectangle {
     }
 
     function launchApp(entry) {
+        root.powerMenuOpen = false
         entry.execute()
         root.closeRequested()
     }
@@ -438,6 +447,7 @@ Rectangle {
     }
 
     Rectangle {
+        id: powerButtonCircle
         anchors {
             right: parent.right
             bottom: parent.bottom
@@ -452,7 +462,28 @@ Rectangle {
         PowerButton {
             anchors.centerIn: parent
             size: root.avatarSize
-            onClicked: GlobalStates.sessionOpen = true
+            onClicked: root.powerMenuOpen = !root.powerMenuOpen
+        }
+    }
+
+    // POWER MENU — dismiss scrim (behind dialog, above the rest of the card)
+    MouseArea {
+        anchors.fill: parent
+        visible:      root.powerMenuOpen
+        onClicked:    root.powerMenuOpen = false
+    }
+
+    // POWER MENU — dialog anchored above the power button circle
+    PowerMenuDialog {
+        id: powerMenu
+        open:        root.powerMenuOpen
+        onDismissed: root.powerMenuOpen = false
+
+        anchors {
+            right:        parent.right
+            bottom:       powerButtonCircle.top
+            rightMargin:  16
+            bottomMargin: 10
         }
     }
 }
