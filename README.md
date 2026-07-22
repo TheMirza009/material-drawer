@@ -48,7 +48,7 @@ modules/
 
 ## Installation
 
-### Automated Installation
+### 1. Automated Installation
 
 You can install Material App Drawer using the automated helper script.
 
@@ -59,6 +59,8 @@ curl -fsSL https://raw.githubusercontent.com/TheMirza009/material-drawer/main/in
 
 > [!NOTE]
 > Piping scripts directly into `bash` is convenient, but inspecting scripts prior to execution is good practice. If you prefer reviewing code before executing, use the Git clone workflow below.
+</br>
+---
 
 #### Git Clone & Setup
 If you prefer inspecting the script locally or maintaining updates via `git pull`:
@@ -91,7 +93,7 @@ Backups are stored safely in `~/.local/state/material-drawer/backups/`, independ
 
 ---
 
-### Manual Integration (Fallback)
+### 2. Manual Integration (Fallback)
 
 If you prefer to integrate the module manually, or the automated script reports an anchor mismatch on your setup, follow the steps below.
 
