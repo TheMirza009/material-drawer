@@ -1,6 +1,6 @@
 # Material App Drawer — Quickshell Module
 
-**Version:** 2.0.0  
+**Version:** 2.1.0  
 **Last Updated:** July 22, 2026
 
 A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (the `ii` Quickshell config). Slides up from the bottom of the screen, shows all installed desktop applications, supports category filtering, search, and swipe pagination.

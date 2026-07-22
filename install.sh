@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-VERSION="2.0.0"
+VERSION="2.1.0"
 REPO_URL="https://github.com/TheMirza009/material-drawer"
 
 # Minimum supported versions — update these once real minimums are known.
