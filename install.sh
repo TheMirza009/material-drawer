@@ -511,6 +511,9 @@ cmd_install() {
         echo -e "${C_GREEN}  Material Drawer installed successfully!${C_RESET}"
         echo -e "${C_GREEN}=================================================${C_RESET}"
         echo "Restart Quickshell and reload Hyprland to apply the changes."
+        echo "Default keybind: 'SUPER + CTRL + R'."
+        echo "Terminal Command: hyprctl reload
+  qs -p ~/.config/quickshell/ii   # or: killall qs; qs -p ~/.config/quickshell/ii &"
     else
         echo -e "${C_YELLOW}=================================================${C_RESET}"
         echo -e "${C_YELLOW}  Completed with $ERRORS issue(s). See warnings above.${C_RESET}"

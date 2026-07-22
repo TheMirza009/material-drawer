@@ -1,14 +1,63 @@
-# Material App Drawer — Quickshell Module
+# Material You App Drawer for Hyprland & Quickshell
 
-**Version:** 2.1.0  
-**Last Updated:** July 22, 2026
+[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/TheMirza009/material-drawer)
+[![Quickshell](https://img.shields.io/badge/Quickshell-ii-purple.svg)](https://github.com/end-4/dots-hyprland)
+[![Wayland](https://img.shields.io/badge/Wayland-Hyprland-blue.svg)](https://hyprland.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (the `ii` Quickshell config). Slides up from the bottom of the screen, shows all installed desktop applications, supports category filtering, search, and swipe pagination.
+An elegant, animated **Material You (Material Design 3)** application launcher and app drawer module for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (`end-4/dots-hyprland` Quickshell config). 
+
+Designed for **Hyprland on Wayland**, it slides smoothly from the bottom of the screen, integrates with `matugen` dynamic color theming, and features category filtering chips, instant live search, swipe pagination, an integrated user avatar, and a floating Power Menu overlay.
 
 > [!IMPORTANT]
 > This module is written specifically **for the IllogicalImpulse Quickshell configuration** (`~/.config/quickshell/ii`). It relies on singletons and services provided by the framework (such as `Appearance`, `DesktopEntries`, `GlobalFocusGrab`, and `GlobalStates`). It is not designed to run standalone.
 
-<!-- TODO: screenshots / demo GIF here — recommended before posting to r/unixporn or similar -->
+---
+
+## Table of Contents
+
+- [Preview](#preview)
+  - [Video Demo](#-video-demo)
+  - [Screenshots](#-screenshots)
+- [Features](#features)
+- [File Structure](#file-structure)
+- [Installation](#installation)
+  - [1. Automated Installation](#1-automated-installation)
+  - [2. Manual Integration](#2-manual-integration-fallback)
+- [Helper Script Commands](#helper-script-commands)
+- [Troubleshooting & FAQ](#troubleshooting)
+- [Uninstalling](#uninstalling)
+- [Credits & License](#credits)
+
+---
+
+## Preview
+
+### 🎬 Video Demo
+
+<div align="center">
+  <video src="preview/demo.mp4" width="100%" controls title="Material You App Drawer for Hyprland Demo"></video>
+  <br/>
+  <sub><em>If the video player does not render in your browser/app, <a href="preview/demo.mp4">click here to view demo.mp4 directly</a>.</em></sub>
+</div>
+
+<br/>
+
+### 📸 Screenshots
+
+#### Main App Grid & Live Search
+![Hyprland Material You App Drawer Application Grid and Search Bar](preview/screenshot_1.png)
+
+<br/>
+
+<div align="center">
+  <img src="preview/screenshot_2.png" width="49%" alt="Quickshell Material You App Drawer Category Chips Filtering" />
+  <img src="preview/screenshot_3.png" width="49%" alt="Hyprland Material You App Drawer Floating Power Menu Overlay" />
+</div>
+
+<p align="center">
+  <sub><em>Left: Category filtering chip selection &nbsp;•&nbsp; Right: Floating Power Menu overlay (Lock, Shut Down, Reboot)</em></sub>
+</p>
 
 ---
 
@@ -311,7 +360,7 @@ If `install.sh status` reports "drift detected" on a file, it usually means the 
 
 ---
 
-## Troubleshooting
+## Troubleshooting & FAQ
 
 - **Drawer doesn't open at all** — run `./install.sh status` to check which files patched cleanly.
 - **Dock renders behind the drawer** — likely means `Dock.qml`'s anchor check failed during install; see the install output for an `anchor_not_found` warning and re-check Step 4 manually.
