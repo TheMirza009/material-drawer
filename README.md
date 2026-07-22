@@ -1,12 +1,14 @@
 # Material App Drawer — Quickshell Module
 
-**Version:** 1.0.1  
-**Last Updated:** July 17, 2026
+**Version:** 2.0.0  
+**Last Updated:** July 22, 2026
 
 A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4/dots-hyprland) (the `ii` Quickshell config). Slides up from the bottom of the screen, shows all installed desktop applications, supports category filtering, search, and swipe pagination.
 
 > [!IMPORTANT]
-> This module is written **for the IllogicalImpulse Quickshell config** (`~/.config/quickshell/ii`). It depends on singletons and services from that framework (`Appearance`, `DesktopEntries`, `GlobalFocusGrab`, `GlobalStates`, etc.). It will not work standalone.
+> This module is written specifically **for the IllogicalImpulse Quickshell configuration** (`~/.config/quickshell/ii`). It relies on singletons and services provided by the framework (such as `Appearance`, `DesktopEntries`, `GlobalFocusGrab`, and `GlobalStates`). It is not designed to run standalone.
+
+<!-- TODO: screenshots / demo GIF here — recommended before posting to r/unixporn or similar -->
 
 ---
 
@@ -25,6 +27,7 @@ A Material You-styled app drawer for [IllogicalImpulse](https://github.com/end-4
 - Dock stays visible on top of the drawer during open/close animation
 - IPC-controllable (`qs ipc call materialDrawer toggle/open/close`)
 - Global shortcut registration (`quickshell:materialDrawerToggle`)
+- Automatic backup, reinstall, uninstall, and status checking (see below)
 
 ---
 
@@ -45,26 +48,64 @@ modules/
 
 ## Installation
 
-### Automated Installation (Recommended)
+### Automated Installation
 
-An idempotent, automated bash script (v1.0.0) is included to safely inject all necessary QML components, global states, and Hyprland rules directly into your configuration files. The script will also automatically copy the module files to the correct Quickshell directory if they aren't already there.
+You can install Material App Drawer using the automated helper script.
 
-1. Navigate to the downloaded repository and run the installation script:
+#### Quick Command
 ```bash
+curl -fsSL https://raw.githubusercontent.com/TheMirza009/material-drawer/main/install.sh | bash
+```
+
+> [!NOTE]
+> Piping scripts directly into `bash` is convenient, but inspecting scripts prior to execution is good practice. If you prefer reviewing code before executing, use the Git clone workflow below.
+
+#### Git Clone & Setup
+If you prefer inspecting the script locally or maintaining updates via `git pull`:
+
+```bash
+git clone https://github.com/TheMirza009/material-drawer
+cd material-drawer
 chmod +x install.sh
 ./install.sh
 ```
-2. Restart Quickshell and reload your Hyprland configuration to apply the changes.
+
+Both methods automatically create backups of modified files, apply required patches, install the module files, and clean up temporary files. After installation, **restart Quickshell and reload your Hyprland configuration** to apply the changes.
+
+### Helper Script Commands
+
+The `install.sh` script provides simple management flags:
+
+| Command | Action |
+|---|---|
+| `./install.sh status` | Inspect installed files, configuration drift, or missing components |
+| `./install.sh reinstall` | Restore baseline backups and reapply module patches (ideal for updates) |
+| `./install.sh uninstall` | Safely restore original configuration files and remove the module |
+| `./install.sh --dry-run` | Preview actions without modifying any files |
+| `./install.sh --yes` | Skip interactive prompts (ideal for automated setup scripts) |
+
+> [!WARNING]
+> Running `uninstall` or `reinstall` restores configuration files from backups created during initial installation. Any manual changes made to those specific files after installing will be reverted. If you have custom edits in `Dock.qml` or `shell.qml`, please back them up beforehand.
+
+Backups are stored safely in `~/.local/state/material-drawer/backups/`, independent of the cloned repository folder.
 
 ---
 
 ### Manual Integration (Fallback)
 
-If you prefer to integrate the module manually or if the script encounters an error, follow the steps below.
+If you prefer to integrate the module manually, or the automated script reports an anchor mismatch on your setup, follow the steps below.
+
+**Optional — back up first.** The automated script does this for you; if you're doing it by hand, it's worth doing yourself too:
+
+```bash
+cp ~/.config/quickshell/ii/shell.qml{,.bak}
+cp ~/.config/quickshell/ii/GlobalStates.qml{,.bak}
+cp ~/.config/quickshell/ii/modules/ii/dock/Dock.qml{,.bak}
+cp ~/.config/hypr/custom/rules.lua{,.bak}
+cp ~/.config/hypr/custom/keybinds.lua{,.bak}
+```
 
 #### Step 1 — Copy the module
-
-Copy the `materialDrawer/` directory into your Quickshell `ii` modules folder:
 
 ```bash
 cp -r materialDrawer/ ~/.config/quickshell/ii/modules/materialDrawer/
@@ -174,15 +215,13 @@ WlrLayershell.layer: GlobalStates.materialDrawerOpen ? WlrLayer.Overlay : WlrLay
 > **Why `Overlay`?** Both the dock and the drawer window live on `WlrLayer.Top`. Within the same layer, the compositor controls z-order by map order — the drawer maps later, so it would render over the dock. Temporarily promoting the dock to `Overlay` (the layer above `Top`) ensures it paints on top of the drawer for the duration of the animation.
 
 > [!WARNING]
-> All docks on all monitors switch to `Overlay` when the drawer opens (since `materialDrawerOpen` is a global flag). On secondary monitors this is cosmetically invisible — nothing changes — but it is a minor side-effect.
+> All docks on all monitors switch to `Overlay` when the drawer opens (since `materialDrawerOpen` is a global flag). On secondary monitors this is cosmetically invisible — nothing changes — but it is a minor side-effect, not a bug.
 
 ---
 
 ### Step 5 — Edit Hyprland layer rules
 
-File: `~/.config/hypr/custom/rules.lua` (or wherever your Hyprland Lua custom rules live)
-
-Add these three rules:
+File: `~/.config/hypr/custom/rules.lua`
 
 ```lua
 -- Material drawer: blur, alpha handling, and slide-from-bottom animation
@@ -204,13 +243,7 @@ hl.layer_rule({ match = { namespace = "quickshell:material_drawer" }, animation 
 
 File: `~/.config/hypr/custom/keybinds.lua`
 
-The drawer exposes both a **global shortcut** (via Hyprland's `global` dispatcher) and an **IPC handler**. Due to a bug in the IllogicalImpulse Lua binding framework where `hl.dsp.global()` silently drops its function reference when combined with `release = true`, the recommended approach is to trigger the drawer via IPC using `exec_cmd`:
-
-**Bare Super tap → toggle drawer:**
-
 ```lua
--- Remove the default Quickshell binds that use bare Super,
--- so this binding can take over the gesture cleanly.
 hl.unbind("SUPER + SUPER_L")
 hl.unbind("SUPER_L")
 
@@ -222,21 +255,17 @@ hl.bind("SUPER + SUPER_L",
 > [!IMPORTANT]
 > `release = true` is required for the "bare Super tap" pattern. Without it, the bind fires on key-down and triggers alongside every other `SUPER+X` combination.
 >
-> `os.getenv("HOME")` is used instead of `~` because the `exec_cmd` dispatcher may not expand shell tildes. This produces the full absolute path at bind-registration time in Lua.
+> `os.getenv("HOME")` is used instead of `~` because the `exec_cmd` dispatcher may not expand shell tildes.
 
 **Alternative — `SUPER + Space` (no release flag needed):**
 
-```qml
+```lua
 hl.bind("SUPER + Space", hl.dsp.global("quickshell:materialDrawerToggle"), { description = "Toggle app drawer" })
 ```
-
-`hl.dsp.global()` works correctly without `release = true`.
 
 ---
 
 ## IPC
-
-The drawer is controllable at any time via Quickshell IPC:
 
 ```bash
 qs -p ~/.config/quickshell/ii ipc call materialDrawer toggle
@@ -246,7 +275,7 @@ qs -p ~/.config/quickshell/ii ipc call materialDrawer close
 
 ---
 
-## Customisation
+## Customization
 
 All tuneable values live at the top of `DrawerSurface.qml` under the **Control Panel** section:
 
@@ -260,11 +289,59 @@ All tuneable values live at the top of `DrawerSurface.qml` under the **Control P
 | `appCellHeight` | `110` | Height of each app cell (px) |
 | `categoryDefs` | see file | Category chip labels and XDG category mappings |
 
-The card itself automatically sizes based on the grid layout dimensions, positioned 75 px from the screen bottom (leaving space for the dock). This can be adjusted in `MaterialDrawerWindow.qml`:
+Adjust in `MaterialDrawerWindow.qml`:
 
 ```qml
 anchors.bottomMargin: 75   // ← increase if your dock is taller
 ```
+
+---
+
+## Compatibility
+
+| Component | Tested Version | Notes |
+|---|---|---|
+| Quickshell | `0.2.1+` (`quickshell-git`) | Requires Qt6 & WlrLayershell support |
+| Hyprland | `0.55.4+` | Tested with custom layer rules and keybindings |
+| IllogicalImpulse | `0.1.0.r1-8` (`dots-hyprland`) | Requires `Appearance`, `DesktopEntries`, and `GlobalStates` singletons |
+
+If `install.sh status` reports "drift detected" on a file, it usually means the installed IllogicalImpulse config has moved past what this module's anchor checks expect — feel free to open an issue with your `status` output.
+
+---
+
+## Troubleshooting
+
+- **Drawer doesn't open at all** — run `./install.sh status` to check which files patched cleanly.
+- **Dock renders behind the drawer** — likely means `Dock.qml`'s anchor check failed during install; see the install output for an `anchor_not_found` warning and re-check Step 4 manually.
+- **Dock briefly elevates on other monitors when I open the drawer** — expected, see the note under Step 4. Not a bug.
+- **I want it fully gone** — `./install.sh uninstall` restores your original files and removes the module.
+
+<!-- TODO: expand as real issues come in from users -->
+
+---
+
+## Uninstalling
+
+```bash
+./install.sh uninstall
+```
+
+Restores your original `shell.qml`, `GlobalStates.qml`, `Dock.qml`, `rules.lua`, and `keybinds.lua` from the backups taken at install time, and removes the copied module directory. See the warning under Installation about edits made after install also being reverted.
+
+---
+
+## Credits
+
+Built for and depends on [IllogicalImpulse](https://github.com/end-4/dots-hyprland) by **end-4** — this module wouldn't function without its `Appearance`, `DesktopEntries`, and `GlobalStates` singletons.
+
+---
+
+## License
+
+MIT — see [LICENSE](./LICENSE).
+
+<!-- TODO: CHANGELOG.md and git tags once a release cadence exists;
+     CONTRIBUTING.md if/when open to external PRs. -->
 
 ---
 
