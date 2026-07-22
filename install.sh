@@ -111,7 +111,7 @@ bootstrap_if_needed() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)" || script_dir=""
 
-    if [ -n "$script_dir" ] && [ -d "$script_dir/materialDrawer" ]; then
+    if [ -n "$script_dir" ] && [ -f "$script_dir/MaterialDrawerWindow.qml" ] && [ -f "$script_dir/DrawerSurface.qml" ]; then
         SCRIPT_DIR="$script_dir"
         return 0
     fi
@@ -412,16 +412,43 @@ EOF
 
 copy_module_files() {
     log "Copying module files to $TARGET_DIR..."
-    if [ "$DRY_RUN" -eq 1 ]; then
-        echo "    (dry-run) would copy $SCRIPT_DIR/materialDrawer/* -> $TARGET_DIR"
+
+    # The repo ships MaterialDrawerWindow.qml, DrawerSurface.qml, and
+    # components/ directly at its root — there is no materialDrawer/
+    # wrapper subfolder in the source. List what we expect explicitly so a
+    # missing file is a loud error, not a silent partial copy.
+    local required=("MaterialDrawerWindow.qml" "DrawerSurface.qml" "components")
+    local missing=0
+    for item in "${required[@]}"; do
+        if [ ! -e "$SCRIPT_DIR/$item" ]; then
+            err "Expected source file/dir not found: $SCRIPT_DIR/$item"
+            missing=1
+        fi
+    done
+    if [ "$missing" -eq 1 ]; then
+        err "Module source is incomplete — refusing to copy a partial module."
+        ERRORS=$((ERRORS+1))
         return
     fi
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "    (dry-run) would copy MaterialDrawerWindow.qml, DrawerSurface.qml, components/ -> $TARGET_DIR"
+        return
+    fi
+
     mkdir -p "$TARGET_DIR"
-    if diff -rq -x '.git' "$SCRIPT_DIR/materialDrawer" "$TARGET_DIR" >/dev/null 2>&1; then
-        skip "Module files already up to date."
-    else
-        cp -r "$SCRIPT_DIR/materialDrawer/"* "$TARGET_DIR/"
+    if ! cp -r "$SCRIPT_DIR/MaterialDrawerWindow.qml" "$SCRIPT_DIR/DrawerSurface.qml" "$SCRIPT_DIR/components" "$TARGET_DIR/"; then
+        err "Copy failed — module files were NOT fully installed."
+        ERRORS=$((ERRORS+1))
+        return
+    fi
+
+    # Verify the copy actually landed before declaring success.
+    if [ -f "$TARGET_DIR/MaterialDrawerWindow.qml" ] && [ -f "$TARGET_DIR/DrawerSurface.qml" ] && [ -d "$TARGET_DIR/components" ]; then
         ok "Module files copied."
+    else
+        err "Post-copy verification failed — files missing from $TARGET_DIR."
+        ERRORS=$((ERRORS+1))
     fi
 }
 
