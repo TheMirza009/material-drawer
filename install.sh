@@ -14,7 +14,7 @@
 #
 set -uo pipefail
 
-VERSION="2.1.0"
+VERSION="0.3.0"
 REPO_URL="https://github.com/TheMirza009/material-drawer"
 
 # Minimum supported versions — update these once real minimums are known.
@@ -417,7 +417,7 @@ copy_module_files() {
     # components/ directly at its root — there is no materialDrawer/
     # wrapper subfolder in the source. List what we expect explicitly so a
     # missing file is a loud error, not a silent partial copy.
-    local required=("MaterialDrawerWindow.qml" "DrawerSurface.qml" "components")
+    local required=("MaterialDrawerWindow.qml" "DrawerSurface.qml" "components" "components/core/EmptyState.qml")
     local missing=0
     for item in "${required[@]}"; do
         if [ ! -e "$SCRIPT_DIR/$item" ]; then
@@ -444,7 +444,7 @@ copy_module_files() {
     fi
 
     # Verify the copy actually landed before declaring success.
-    if [ -f "$TARGET_DIR/MaterialDrawerWindow.qml" ] && [ -f "$TARGET_DIR/DrawerSurface.qml" ] && [ -d "$TARGET_DIR/components" ]; then
+    if [ -f "$TARGET_DIR/MaterialDrawerWindow.qml" ] && [ -f "$TARGET_DIR/DrawerSurface.qml" ] && [ -d "$TARGET_DIR/components" ] && [ -f "$TARGET_DIR/components/core/EmptyState.qml" ]; then
         ok "Module files copied."
     else
         err "Post-copy verification failed — files missing from $TARGET_DIR."

@@ -1,6 +1,6 @@
 # Material You App Drawer for Hyprland & Quickshell
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)](https://github.com/TheMirza009/material-drawer)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/TheMirza009/material-drawer)
 [![Quickshell](https://img.shields.io/badge/Quickshell-ii-purple.svg)](https://github.com/end-4/dots-hyprland)
 [![Wayland](https://img.shields.io/badge/Wayland-Hyprland-blue.svg)](https://hyprland.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -59,6 +59,18 @@ Designed for **Hyprland on Wayland**, it slides smoothly from the bottom of the 
   <sub><em>Left: Category filtering chip selection &nbsp;•&nbsp; Right: Floating Power Menu overlay (Lock, Shut Down, Reboot)</em></sub>
 </p>
 
+#### Empty States
+
+<div align="center">
+  <img src="preview/empty_1.png" width="32%" alt="Empty State 1" />
+  <img src="preview/empty_2.png" width="32%" alt="Empty State 2" />
+  <img src="preview/empty_3.png" width="32%" alt="Empty State 3" />
+</div>
+
+<p align="center">
+  <sub><em>Dynamic and randomized geometric empty states</em></sub>
+</p>
+
 ---
 
 ## Features
@@ -67,6 +79,7 @@ Designed for **Hyprland on Wayland**, it slides smoothly from the bottom of the 
 - Material You theming via the existing `Appearance` singleton (follows matugen palette, dark/light mode, transparency)
 - Category filter chips (All, Internet, Development, Office, System, Media)
 - Live search
+- Procedurally generated, randomized geometric empty states with continuous rotation animations
 - Swipe-paginated app grid (5 × 4 per page)
 - Animated pagination dots
 - User avatar with quick-access to account settings
@@ -88,7 +101,7 @@ modules/
     ├── MaterialDrawerWindow.qml   ← Scope + PanelWindow wrapper
     ├── DrawerSurface.qml          ← Main drawer card UI
     ├── components/
-    │   ├── core/                  ← Grid, Search, Chips, Pagination
+    │   ├── core/                  ← Grid, Search, Chips, Pagination, Empty States
     │   └── buttons/               ← Power Menu, User Avatar, Ripples
     └── docs/                      ← Architectural specs & workflows
 ```

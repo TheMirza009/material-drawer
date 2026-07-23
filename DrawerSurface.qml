@@ -391,25 +391,42 @@ Rectangle {
         // APP GRID
         Item { Layout.preferredHeight: 18 }
 
-        AppGrid {
-            id: appGrid
+        Item {
             Layout.preferredWidth: root.gridContentWidth
             Layout.preferredHeight: root.gridContentHeight
-            
-            columns: root.columns
-            rows: root.rows
-            appCellWidth: root.appCellWidth
-            appCellHeight: root.appCellHeight
-            dynamicColSpacing: root.dynamicColSpacing
-            dynamicRowSpacing: root.dynamicRowSpacing
-            iconChipSize: root.iconChipSize
-            iconShape: root.iconShape
-            iconSize: root.iconSize
-            filterStaggerMs: root.filterStaggerMs
-            
-            filterAnimating: root.filterAnimating
-            
-            onAppClicked: entry => root.launchApp(entry)
+
+            AppGrid {
+                id: appGrid
+                anchors.fill: parent
+                
+                columns: root.columns
+                rows: root.rows
+                appCellWidth: root.appCellWidth
+                appCellHeight: root.appCellHeight
+                dynamicColSpacing: root.dynamicColSpacing
+                dynamicRowSpacing: root.dynamicRowSpacing
+                iconChipSize: root.iconChipSize
+                iconShape: root.iconShape
+                iconSize: root.iconSize
+                filterStaggerMs: root.filterStaggerMs
+                
+                filterAnimating: root.filterAnimating
+                
+                onAppClicked: entry => root.launchApp(entry)
+            }
+
+            EmptyState {
+                id: emptyState
+                anchors.fill: parent
+                visible: root.filteredApps.length === 0
+                opacity: visible ? 1 : 0
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: emptyState.fadeDurationMs
+                        easing.type: Easing.InOutQuad
+                    }
+                }
+            }
         }
 
         // SPACER
