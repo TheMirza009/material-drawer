@@ -36,13 +36,10 @@ Designed for **Hyprland on Wayland**, it slides smoothly from the bottom of the 
 ### 🎬 Video Demo
 
 <div align="center">
-
-![](preview/demo_compressed.mp4)
-
-<br/>
-<sub><em>If the video player does not render in your browser/app, <a href="preview/demo_compressed.mp4">click here to view demo_compressed.mp4 directly</a>.</em></sub>
+  <video src="https://github.com/user-attachments/assets/707dd21b-aba8-4e6f-9a73-aac8c0b92810" width="100%" controls title="Material You App Drawer for Hyprland Demo"></video>
+  <br/>
+  <sub><em>If the video player does not render in your browser/app, <a href="preview/demo_compressed.mp4">click here to view demo.mp4 directly</a>.</em></sub>
 </div>
-
 
 <br/>
 
